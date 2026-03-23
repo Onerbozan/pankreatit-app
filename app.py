@@ -6,6 +6,8 @@ from google.oauth2.service_account import Credentials
 
 # --- AYARLAR VE VERİTABANI ---
 st.set_page_config(page_title="Akut Pankreatit Çalışması", layout="wide")
+
+# DİKKAT: BURAYA KENDİ GOOGLE SHEETS LİNKİNİZİ YAPIŞTIRMAYI UNUTMAYIN!
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1fTA-MdaaV5CU812aPn1bZZc1KIMWey-P84jAqIbBYOA/edit?gid=0#gid=0"
 
 COLS = [
@@ -44,13 +46,12 @@ def veri_kaydet(df):
     sheet.clear()
     sheet.update(values=[df.columns.values.tolist()] + df.values.tolist(), range_name='A1')
     veri_yukle.clear()
-    
+
 def get_val(df, idx, col, default=0.0):
     val = df.at[idx, col]
     if pd.isna(val) or str(val).strip() == "":
         return default
     try:
-        # Virgüllü sayı girilirse noktaya çevir, hata varsa sıfır kabul et
         temiz_deger = str(val).replace(",", ".").strip()
         return float(temiz_deger)
     except ValueError:
@@ -160,8 +161,7 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
             else:
                 st.error("Lütfen TC (11 hane) ve Ad Soyad alanlarını doldurun.")
 
-   
-        with sekme2:
+    with sekme2:
         st.subheader("Laboratuvar Sonuçlarını İşle")
         
         arama_lab = st.text_input("🔍 İsim veya TC'nin bir kısmını yazarak arayın:", key="ara_lab")
@@ -172,9 +172,9 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
             filtreli_df_lab = df
             
         hasta_listesi_lab = filtreli_df_lab["TC_No"] + " - " + filtreli_df_lab["Ad_Soyad"] if not filtreli_df_lab.empty else ["Hasta Yok"]
-        hasta_secim = st.selectbox("Lab İçin Hasta Seçin", hasta_listesi_lab, key="lab_secim")
+        hasta_secim = st.selectbox("Lab İçin Hasta Seçin", hasta_listesi_lab, key="lab_secim_kutu")
         
-        if not df.empty and hasta_secim != "Hasta Yok":
+        if not filtreli_df_lab.empty and hasta_secim != "Hasta Yok":
             secilen_tc = hasta_secim.split(" - ")[0]
             idx = df[df["TC_No"] == secilen_tc].index[0]
             
@@ -226,7 +226,7 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
                 veri_kaydet(df)
                 st.success(f"Lab verileri Google'a eklendi! SIRS: {sirs}, BISAP: {bisap}")
 
-   with sekme3:
+    with sekme3:
         st.subheader("Hastane Yatışı ve Sonlanım Bilgileri")
         
         arama_son = st.text_input("🔍 İsim veya TC'nin bir kısmını yazarak arayın:", key="ara_son")
@@ -237,9 +237,9 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
             filtreli_df_son = df
             
         hasta_listesi_son = filtreli_df_son["TC_No"] + " - " + filtreli_df_son["Ad_Soyad"] if not filtreli_df_son.empty else ["Hasta Yok"]
-        hasta_secim_son = st.selectbox("Sonlanım İçin Hasta Seçin", hasta_listesi_son, key="son_secim")
+        hasta_secim_son = st.selectbox("Sonlanım İçin Hasta Seçin", hasta_listesi_son, key="son_secim_kutu")
         
-        if not df.empty and hasta_secim_son != "Hasta Yok":
+        if not filtreli_df_son.empty and hasta_secim_son != "Hasta Yok":
             secilen_tc_son = hasta_secim_son.split(" - ")[0]
             idx_son = df[df["TC_No"] == secilen_tc_son].index[0]
             
@@ -282,7 +282,7 @@ elif st.session_state.kullanici_rolu == "Radyolog":
         
     df = veri_yukle()
     
-   st.subheader("Radyoloji Puanlaması Bekleyen Hastalar")
+    st.subheader("Radyoloji Puanlaması Bekleyen Hastalar")
     
     arama_rad = st.text_input("🔍 İsim veya TC'nin bir kısmını yazarak arayın:", key="ara_rad")
     if arama_rad:
@@ -292,8 +292,9 @@ elif st.session_state.kullanici_rolu == "Radyolog":
         filtreli_df_rad = df
         
     hasta_listesi_rad = filtreli_df_rad["TC_No"] + " - " + filtreli_df_rad["Ad_Soyad"] if not filtreli_df_rad.empty else ["Hasta Yok"]
-    hasta_secim = st.selectbox("İncelenecek Hastayı Seçin", hasta_listesi_rad, key="rad_secim")
-    if not df.empty and hasta_secim != "Hasta Yok":
+    hasta_secim = st.selectbox("İncelenecek Hastayı Seçin", hasta_listesi_rad, key="rad_secim_kutu")
+    
+    if not filtreli_df_rad.empty and hasta_secim != "Hasta Yok":
         st.write("Lütfen aşağıdaki bulguları işaretleyin. Puanlar otomatik hesaplanacaktır.")
         
         col1, col2 = st.columns(2)

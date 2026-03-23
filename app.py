@@ -50,19 +50,35 @@ def get_val(df, idx, col, default=0.0):
 # --- OTOMATİK SKOR HESAPLAMA FONKSİYONLARI ---
 def sirs_hesapla(ates, nabiz, solunum, wbc):
     skor = 0
-    if float(ates) > 38 or float(ates) < 36: skor += 1
-    if float(nabiz) > 90: skor += 1
-    if float(solunum) > 20: skor += 1
-    if pd.notna(wbc) and float(wbc) != 0 and (float(wbc) > 12000 or float(wbc) < 4000): skor += 1
+    try:
+        f_ates = float(ates) if ates not in ["", None] else 36.5
+        f_nabiz = float(nabiz) if nabiz not in ["", None] else 80
+        f_solunum = float(solunum) if solunum not in ["", None] else 16
+        f_wbc = float(wbc) if wbc not in ["", None] else 0.0
+
+        if f_ates > 38 or (f_ates > 0 and f_ates < 36): skor += 1
+        if f_nabiz > 90: skor += 1
+        if f_solunum > 20: skor += 1
+        if f_wbc != 0 and (f_wbc > 12000 or f_wbc < 4000): skor += 1
+    except:
+        pass
     return skor
 
 def bisap_hesapla(bun, gks, sirs, yas, plevral):
     skor = 0
-    if pd.notna(bun) and float(bun) >= 25: skor += 1
-    if pd.notna(gks) and float(gks) < 15: skor += 1
-    if pd.notna(sirs) and float(sirs) >= 2: skor += 1
-    if pd.notna(yas) and float(yas) >= 60: skor += 1
-    if plevral == "Var": skor += 1
+    try:
+        f_bun = float(bun) if bun not in ["", None] else 0.0
+        f_gks = float(gks) if gks not in ["", None] else 15
+        f_sirs = float(sirs) if sirs not in ["", None] else 0
+        f_yas = float(yas) if yas not in ["", None] else 0
+
+        if f_bun >= 25: skor += 1
+        if f_gks < 15: skor += 1
+        if f_sirs >= 2: skor += 1
+        if f_yas >= 60: skor += 1
+        if plevral == "Var": skor += 1
+    except:
+        pass
     return skor
 
 # --- GİRİŞ PANELİ (LOGIN) ---

@@ -24,6 +24,7 @@ def get_gspread_client():
     creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
     return gspread.authorize(creds)
 
+@st.cache_data(ttl=30)
 def veri_yukle():
     client = get_gspread_client()
     sheet = client.open_by_url(SHEET_URL).sheet1
@@ -42,7 +43,8 @@ def veri_kaydet(df):
     sheet = client.open_by_url(SHEET_URL).sheet1
     sheet.clear()
     sheet.update(values=[df.columns.values.tolist()] + df.values.tolist(), range_name='A1')
-
+    veri_yukle.clear()
+    
 def get_val(df, idx, col, default=0.0):
     val = df.at[idx, col]
     if pd.isna(val) or str(val).strip() == "":

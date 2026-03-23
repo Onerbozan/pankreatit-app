@@ -6,7 +6,7 @@ from google.oauth2.service_account import Credentials
 
 # --- AYARLAR VE VERİTABANI ---
 st.set_page_config(page_title="Akut Pankreatit Çalışması", layout="wide")
-SHEET_NAME = "Akut_Pankreatit_Veri"
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1fTA-MdaaV5CU812aPn1bZZc1KIMWey-P84jAqIbBYOA/edit?gid=0#gid=0"
 
 COLS = [
     "TC_No", "Ad_Soyad", "Yas", "Cinsiyet", "Etiyoloji", "Semptom_Suresi", "GKS", 
@@ -26,7 +26,7 @@ def get_gspread_client():
 
 def veri_yukle():
     client = get_gspread_client()
-    sheet = client.open(SHEET_NAME).sheet1
+    sheet = client.open_by_url(SHEET_URL).sheet1
     data = sheet.get_all_values()
     if not data:
         sheet.update(values=[COLS], range_name='A1')
@@ -39,7 +39,7 @@ def veri_yukle():
 
 def veri_kaydet(df):
     client = get_gspread_client()
-    sheet = client.open(SHEET_NAME).sheet1
+    sheet = client.open_by_url(SHEET_URL).sheet1
     sheet.clear()
     sheet.update(values=[df.columns.values.tolist()] + df.values.tolist(), range_name='A1')
 

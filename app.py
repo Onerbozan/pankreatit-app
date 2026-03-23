@@ -3,15 +3,16 @@ import pandas as pd
 import json
 import gspread
 from google.oauth2.service_account import Credentials
+from datetime import datetime
 
 # --- AYARLAR VE VERİTABANI ---
 st.set_page_config(page_title="Akut Pankreatit Çalışması", layout="wide")
 
-# DİKKAT: BURAYA KENDİ GOOGLE SHEETS LİNKİNİZİ YAPIŞTIRMAYI UNUTMAYIN!
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1fTA-MdaaV5CU812aPn1bZZc1KIMWey-P84jAqIbBYOA/edit?gid=0#gid=0"
 
+# Kayit_Tarihi sütunu eklendi
 COLS = [
-    "TC_No", "Ad_Soyad", "Yas", "Cinsiyet", "Etiyoloji", "Semptom_Suresi", "GKS", 
+    "TC_No", "Ad_Soyad", "Kayit_Tarihi", "Yas", "Cinsiyet", "Etiyoloji", "Semptom_Suresi", "GKS", 
     "Ates", "Nabiz", "Solunum", "Sistolik", "Diyastolik", "SpO2", "Plevral_Efuzyon", 
     "BUN", "WBC", "Amilaz", "Lipaz", "Glukoz", "Kreatinin", "Na", "K", "AST", "ALT", 
     "Bilirubin", "Albumin", "Htc", "Hgb", "Plt", "Laktat", "pH", "PaCO2", "PaO2", "HCO3", 
@@ -34,8 +35,15 @@ def veri_yukle():
     if not data:
         sheet.update(values=[COLS], range_name='A1')
         return pd.DataFrame(columns=COLS)
+    
     headers = data.pop(0)
     df = pd.DataFrame(data, columns=headers)
+    
+    # Eski tablolarda olmayan yeni sütunlar varsa (Kayıt Tarihi gibi) otomatik ekle
+    for col in COLS:
+        if col not in df.columns:
+            df[col] = ""
+            
     if 'TC_No' in df.columns:
         df['TC_No'] = df['TC_No'].astype(str)
     return df
@@ -119,10 +127,12 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
         st.session_state.kullanici_rolu = None
         st.rerun()
         
-    sekme1, sekme2, sekme3 = st.tabs(["📋 Yeni Hasta Kaydı", "🔬 Laboratuvar Girişi", "🏥 Yatış ve Sonlanım"])
+    # Yeni bir sekme (Hasta Listesi ve Durum) eklendi
+    sekme1, sekme2, sekme3, sekme4 = st.tabs(["📋 Yeni Hasta Kaydı", "🔬 Laboratuvar Girişi", "🏥 Yatış ve Sonlanım", "📊 Hasta Listesi ve Durum"])
     
     df = veri_yukle()
     
+    # SEKME 1: YENİ HASTA KAYDI
     with sekme1:
         st.subheader("Yeni Hasta Ekle")
         tc = st.text_input("TC Kimlik No (11 Hane)", max_chars=11)
@@ -149,18 +159,20 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
         
         if st.button("Hastayı Kaydet"):
             if len(tc) == 11 and ad:
+                bugun = datetime.now().strftime("%d/%m/%Y")
                 yeni_veri = {col: "" for col in COLS}
                 yeni_veri.update({
-                    "TC_No": str(tc), "Ad_Soyad": ad, "Yas": yas, "Cinsiyet": cinsiyet, "Etiyoloji": etiyoloji,
+                    "TC_No": str(tc), "Ad_Soyad": ad, "Kayit_Tarihi": bugun, "Yas": yas, "Cinsiyet": cinsiyet, "Etiyoloji": etiyoloji,
                     "Semptom_Suresi": semptom, "GKS": gks, "Ates": ates, "Nabiz": nabiz, "Solunum": solunum,
                     "Sistolik": sistolik, "Diyastolik": diyastolik, "SpO2": spo2, "Plevral_Efuzyon": plevral
                 })
                 df = pd.concat([df, pd.DataFrame([yeni_veri])], ignore_index=True)
                 veri_kaydet(df)
-                st.success("Hasta başarıyla Google Sheets'e kaydedildi!")
+                st.success(f"Hasta başarıyla kaydedildi! (Kayıt Tarihi: {bugun})")
             else:
                 st.error("Lütfen TC (11 hane) ve Ad Soyad alanlarını doldurun.")
 
+    # SEKME 2: LABORATUVAR
     with sekme2:
         st.subheader("Laboratuvar Sonuçlarını İşle")
         
@@ -226,6 +238,7 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
                 veri_kaydet(df)
                 st.success(f"Lab verileri Google'a eklendi! SIRS: {sirs}, BISAP: {bisap}")
 
+    # SEKME 3: YATIŞ
     with sekme3:
         st.subheader("Hastane Yatışı ve Sonlanım Bilgileri")
         
@@ -273,6 +286,45 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
                 veri_kaydet(df)
                 st.success("Sonlanım bilgileri Google'a kaydedildi!")
 
+    # SEKME 4: HASTA LİSTESİ VE EKSİK DURUM TAKİBİ
+    with sekme4:
+        st.subheader("📌 Hasta Listesi ve Eksik Veri Takibi")
+        if df.empty:
+            st.info("Henüz sisteme kayıtlı hasta bulunmuyor.")
+        else:
+            # Güzel görünümlü bir tablo başlığı
+            c1, c2, c3, c4, c5 = st.columns([3, 2, 1.5, 1.5, 1.5])
+            c1.markdown("**Hasta Adı (TC)**")
+            c2.markdown("**Kayıt Tarihi**")
+            c3.markdown("**🔬 Lab**")
+            c4.markdown("**🏥 Yatış**")
+            c5.markdown("**☢️ Radyoloji**")
+            st.divider()
+            
+            # Hastaları döngüye al ve eksiklik durumlarını analiz et
+            for idx, row in df.iterrows():
+                tc = str(row.get("TC_No", "Bilinmiyor"))
+                ad = str(row.get("Ad_Soyad", "Bilinmiyor"))
+                tarih = str(row.get("Kayit_Tarihi", "Tarih Yok"))
+                if tarih == "nan" or tarih.strip() == "": tarih = "Tarih Yok"
+
+                # Doluluk Kuralları: (Lab için BUN, Yatış için Atlanta, Radyoloji için CTSI_Skoru'na bakılır)
+                lab_ok = str(row.get("BUN", "")).strip() not in ["", "nan"]
+                yatis_ok = str(row.get("Atlanta", "")).strip() not in ["", "Belirtilmedi", "nan"]
+                rad_ok = str(row.get("CTSI_Skoru", "")).strip() not in ["", "nan"]
+
+                lab_ikon = "🟢 Tamam" if lab_ok else "🔴 Eksik"
+                yatis_ikon = "🟢 Tamam" if yatis_ok else "🔴 Eksik"
+                rad_ikon = "🟢 Tamam" if rad_ok else "🔴 Eksik"
+
+                c1, c2, c3, c4, c5 = st.columns([3, 2, 1.5, 1.5, 1.5])
+                c1.write(f"**{ad}**\n\n*(TC: {tc})*")
+                c2.write(tarih)
+                c3.write(lab_ikon)
+                c4.write(yatis_ikon)
+                c5.write(rad_ikon)
+                st.divider()
+
 # --- RADYOLOG EKRANI ---
 elif st.session_state.kullanici_rolu == "Radyolog":
     st.title("☢️ Radyoloji Paneli")
@@ -295,6 +347,14 @@ elif st.session_state.kullanici_rolu == "Radyolog":
     hasta_secim = st.selectbox("İncelenecek Hastayı Seçin", hasta_listesi_rad, key="rad_secim_kutu")
     
     if not filtreli_df_rad.empty and hasta_secim != "Hasta Yok":
+        secilen_tc = hasta_secim.split(" - ")[0]
+        hasta_idx = df[df["TC_No"] == secilen_tc].index[0]
+        
+        # Radyolog Ekranında Kayıt Tarihini Gösterme
+        kayit_tarihi = str(df.at[hasta_idx, "Kayit_Tarihi"]) if "Kayit_Tarihi" in df.columns else "Tarih Yok"
+        if kayit_tarihi == "nan" or kayit_tarihi.strip() == "": kayit_tarihi = "Tarih Yok"
+        st.info(f"📅 **Hastanın Sisteme Kayıt Tarihi:** {kayit_tarihi}")
+        
         st.write("Lütfen aşağıdaki bulguları işaretleyin. Puanlar otomatik hesaplanacaktır.")
         
         col1, col2 = st.columns(2)
@@ -312,9 +372,6 @@ elif st.session_state.kullanici_rolu == "Radyolog":
         if st.button("Radyoloji Skorlarını Kaydet"):
             ctsi_puan = int(balthazar.split("(")[1][0]) + int(nekroz_ctsi.split("(")[1][0])
             mctsi_puan = int(inflamasyon.split("(")[1][0]) + int(nekroz_mctsi.split("(")[1][0]) + int(komplikasyon.split("(")[1][0])
-            
-            secilen_tc = hasta_secim.split(" - ")[0]
-            hasta_idx = df[df["TC_No"] == secilen_tc].index[0]
             
             df.at[hasta_idx, "CTSI_Skoru"] = ctsi_puan
             df.at[hasta_idx, "MCTSI_Skoru"] = mctsi_puan

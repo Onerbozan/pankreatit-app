@@ -45,7 +45,14 @@ def veri_kaydet(df):
 
 def get_val(df, idx, col, default=0.0):
     val = df.at[idx, col]
-    return float(val) if pd.notna(val) and str(val).strip() != "" else default
+    if pd.isna(val) or str(val).strip() == "":
+        return default
+    try:
+        # Virgüllü sayı girilirse noktaya çevir, hata varsa sıfır kabul et
+        temiz_deger = str(val).replace(",", ".").strip()
+        return float(temiz_deger)
+    except ValueError:
+        return default
 
 # --- OTOMATİK SKOR HESAPLAMA FONKSİYONLARI ---
 def sirs_hesapla(ates, nabiz, solunum, wbc):

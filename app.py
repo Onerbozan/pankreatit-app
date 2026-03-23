@@ -10,7 +10,6 @@ st.set_page_config(page_title="Akut Pankreatit Çalışması", layout="wide")
 
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1fTA-MdaaV5CU812aPn1bZZc1KIMWey-P84jAqIbBYOA/edit?gid=0#gid=0"
 
-# Radyoloji alt parametreleri için 5 yeni sütun eklendi
 COLS = [
     "TC_No", "Ad_Soyad", "Kayit_Tarihi", "Kayit_Yapan", "Lab_Yapan", "Yatis_Yapan", "Radyoloji_Yapan",
     "Yas", "Cinsiyet", "Etiyoloji", "Semptom_Suresi", "GKS", 
@@ -41,7 +40,6 @@ def veri_yukle():
     headers = data.pop(0)
     df = pd.DataFrame(data, columns=headers)
     
-    # Eski tablolarda olmayan yeni sütunlar varsa otomatik ekle
     for col in COLS:
         if col not in df.columns:
             df[col] = ""
@@ -96,7 +94,7 @@ def bisap_hesapla(bun, gks, sirs, yas, plevral):
         if f_gks < 15: skor += 1
         if f_sirs >= 2: skor += 1
         if f_yas >= 60: skor += 1
-        if plevral == "Var": skor += 1
+        if str(plevral).strip() == "Var": skor += 1
     except:
         pass
     return skor
@@ -156,11 +154,11 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
         solunum = v3.number_input("Solunum Sayısı (/dk)", value=16)
         spo2 = v4.number_input("SpO2 (%)", value=98)
         
-        v5, v6, v7, v8 = st.columns(4)
+        # Plevral Efüzyon buradan kaldırıldı, 3 sütuna düşürüldü
+        v5, v6, v7 = st.columns(3)
         sistolik = v5.number_input("Sistolik KB", value=120)
         diyastolik = v6.number_input("Diyastolik KB", value=80)
         gks = v7.selectbox("Glasgow Koma Skoru", range(3, 16), index=12)
-        plevral = v8.radio("Plevral Efüzyon", ["Yok", "Var"])
         
         if st.button("Hastayı Kaydet"):
             if len(tc) == 11 and ad:
@@ -171,7 +169,7 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
                     "Kayit_Yapan": st.session_state.aktif_kullanici,
                     "Yas": yas, "Cinsiyet": cinsiyet, "Etiyoloji": etiyoloji,
                     "Semptom_Suresi": semptom, "GKS": gks, "Ates": ates, "Nabiz": nabiz, "Solunum": solunum,
-                    "Sistolik": sistolik, "Diyastolik": diyastolik, "SpO2": spo2, "Plevral_Efuzyon": plevral
+                    "Sistolik": sistolik, "Diyastolik": diyastolik, "SpO2": spo2, "Plevral_Efuzyon": "Yok" # Standart boş değer
                 })
                 df = pd.concat([df, pd.DataFrame([yeni_veri])], ignore_index=True)
                 veri_kaydet(df)
@@ -196,10 +194,17 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
             secilen_tc = hasta_secim.split(" - ")[0]
             idx = df[df["TC_No"] == secilen_tc].index[0]
             
-            col1, col2 = st.columns(2)
+            st.markdown("**Skorlama İçin Kritik Parametreler**")
+            col1, col2, col3 = st.columns(3)
             bun = col1.number_input("BUN (mg/dL)", value=get_val(df, idx, "BUN"))
             wbc = col2.number_input("WBC (Lökosit) /mm³", value=get_val(df, idx, "WBC"))
             
+            # Plevral Efüzyon buraya eklendi
+            mevcut_plevral = str(df.at[idx, "Plevral_Efuzyon"]).strip()
+            plevral_idx = 1 if mevcut_plevral == "Var" else 0
+            plevral = col3.radio("Plevral Efüzyon", ["Yok", "Var"], index=plevral_idx)
+            
+            st.markdown("**Biyokimya ve Hemogram**")
             l_col1, l_col2, l_col3, l_col4 = st.columns(4)
             amilaz = l_col1.number_input("Amilaz (U/mL)", value=get_val(df, idx, "Amilaz"))
             lipaz = l_col2.number_input("Lipaz (U/mL)", value=get_val(df, idx, "Lipaz"))
@@ -216,6 +221,7 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
             htc = l_col3.number_input("Hematokrit (%)", value=get_val(df, idx, "Htc"))
             hgb = l_col4.number_input("Hemoglobin", value=get_val(df, idx, "Hgb"))
             
+            st.markdown("**Kan Gazı ve Diğerleri**")
             kg_col1, kg_col2, kg_col3, kg_col4 = st.columns(4)
             plt = kg_col1.number_input("Trombosit", value=get_val(df, idx, "Plt"))
             laktat = kg_col2.number_input("Laktat", value=get_val(df, idx, "Laktat"))
@@ -231,11 +237,12 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
                 df.at[idx, "Bilirubin"] = bilirubin; df.at[idx, "Albumin"] = albumin; df.at[idx, "Htc"] = htc
                 df.at[idx, "Hgb"] = hgb; df.at[idx, "Plt"] = plt; df.at[idx, "Laktat"] = laktat
                 df.at[idx, "pH"] = ph; df.at[idx, "PaCO2"] = paco2; df.at[idx, "PaO2"] = pao2; df.at[idx, "HCO3"] = hco3
+                df.at[idx, "Plevral_Efuzyon"] = plevral
                 df.at[idx, "Lab_Yapan"] = st.session_state.aktif_kullanici
                 
                 h = df.loc[idx]
                 sirs = sirs_hesapla(h["Ates"], h["Nabiz"], h["Solunum"], wbc)
-                bisap = bisap_hesapla(bun, h["GKS"], sirs, h["Yas"], h["Plevral_Efuzyon"])
+                bisap = bisap_hesapla(bun, h["GKS"], sirs, h["Yas"], plevral)
                 
                 df.at[idx, "SIRS_Skoru"] = sirs
                 df.at[idx, "BISAP_Skoru"] = bisap
@@ -289,21 +296,31 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
 
     # SEKME 4: HASTA LİSTESİ VE DÜZENLEME
     with sekme4:
-        st.subheader("📌 Hasta Listesi ve Eksik Veri Takibi")
+        st.subheader("✏️ Tüm Verileri Düzenle (Hızlı Excel Modu)")
+        st.info("💡 Aşağıdaki tabloda herhangi bir hücrenin üzerine çift tıklayarak veriyi doğrudan değiştirebilirsiniz.")
+        
+        edited_df = st.data_editor(df, key="veri_editoru", use_container_width=True, hide_index=True)
+
+        if st.button("💾 Tablodaki Değişiklikleri Google'a Kaydet"):
+            for i, row in edited_df.iterrows():
+                sirs = sirs_hesapla(row["Ates"], row["Nabiz"], row["Solunum"], row["WBC"])
+                edited_df.at[i, "SIRS_Skoru"] = sirs
+                edited_df.at[i, "BISAP_Skoru"] = bisap_hesapla(row["BUN"], row["GKS"], sirs, row["Yas"], row["Plevral_Efuzyon"])
+            
+            veri_kaydet(edited_df)
+            st.success("Tüm düzenlemeler başarıyla güncellendi!")
+
+        st.write("---")
+        st.subheader("📌 Eksik Veri Takip Listesi")
+        
         if df.empty:
             st.info("Henüz sisteme kayıtlı hasta bulunmuyor.")
         else:
-            c1, c2, c3, c4, c5 = st.columns([3, 2, 1.5, 1.5, 1.5])
-            c1.markdown("**Hasta Adı (TC)**")
-            c2.markdown("**Kayıt Tarihi**")
-            c3.markdown("**🔬 Lab**")
-            c4.markdown("**🏥 Yatış**")
-            c5.markdown("**☢️ Radyoloji**")
-            st.divider()
-            
+            # Çok daha kompakt ve küçük bir mini tablo oluşturuluyor
+            durum_listesi = []
             for idx, row in df.iterrows():
-                tc = str(row.get("TC_No", "Bilinmiyor"))
-                ad = str(row.get("Ad_Soyad", "Bilinmiyor"))
+                tc = str(row.get("TC_No", ""))
+                ad = str(row.get("Ad_Soyad", ""))
                 tarih = str(row.get("Kayit_Tarihi", "Tarih Yok"))
                 if tarih == "nan" or tarih.strip() == "": tarih = "Tarih Yok"
 
@@ -311,28 +328,17 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
                 yatis_ok = str(row.get("Atlanta", "")).strip() not in ["", "Belirtilmedi", "nan"]
                 rad_ok = str(row.get("CTSI_Skoru", "")).strip() not in ["", "nan"]
 
-                c1, c2, c3, c4, c5 = st.columns([3, 2, 1.5, 1.5, 1.5])
-                c1.write(f"**{ad}**\n\n*(TC: {tc})*")
-                c2.write(tarih)
-                c3.write("🟢 Tamam" if lab_ok else "🔴 Eksik")
-                c4.write("🟢 Tamam" if yatis_ok else "🔴 Eksik")
-                c5.write("🟢 Tamam" if rad_ok else "🔴 Eksik")
-                st.divider()
-
-            st.write("---")
-            st.subheader("✏️ Tüm Verileri Düzenle (Hızlı Excel Modu)")
-            st.info("💡 **Nasıl Kullanılır?** Aşağıdaki tabloda herhangi bir hücrenin üzerine çift tıklayarak veriyi doğrudan silebilir veya değiştirebilirsiniz. İşiniz bittiğinde alttaki mavi kaydet butonuna basmayı unutmayın.")
+                durum_listesi.append({
+                    "TC Kimlik": tc,
+                    "Ad Soyad": ad,
+                    "Kayıt Tarihi": tarih,
+                    "Lab": "🟢" if lab_ok else "🔴",
+                    "Yatış": "🟢" if yatis_ok else "🔴",
+                    "Radyoloji": "🟢" if rad_ok else "🔴"
+                })
             
-            edited_df = st.data_editor(df, key="veri_editoru", use_container_width=True, hide_index=True)
-
-            if st.button("💾 Tablodaki Değişiklikleri Google'a Kaydet"):
-                for i, row in edited_df.iterrows():
-                    sirs = sirs_hesapla(row["Ates"], row["Nabiz"], row["Solunum"], row["WBC"])
-                    edited_df.at[i, "SIRS_Skoru"] = sirs
-                    edited_df.at[i, "BISAP_Skoru"] = bisap_hesapla(row["BUN"], row["GKS"], sirs, row["Yas"], row["Plevral_Efuzyon"])
-                
-                veri_kaydet(edited_df)
-                st.success("Tüm düzenlemeler başarıyla güncellendi!")
+            durum_df = pd.DataFrame(durum_listesi)
+            st.dataframe(durum_df, hide_index=True, use_container_width=True)
 
 # --- RADYOLOG EKRANI ---
 elif st.session_state.kullanici_rolu == "Radyolog":
@@ -344,7 +350,6 @@ elif st.session_state.kullanici_rolu == "Radyolog":
         
     df = veri_yukle()
     
-    # Radyoloji Seçenekleri
     opt_balthazar = ["Grade A (0 Puan)", "Grade B (1 Puan)", "Grade C (2 Puan)", "Grade D (3 Puan)", "Grade E (4 Puan)"]
     opt_nekroz_c = ["Yok (0 Puan)", "<%33 (2 Puan)", "%33-%50 (4 Puan)", ">%50 (6 Puan)"]
     opt_inf = ["Normal (0 Puan)", "Fokal/Diffüz Genişleme (2 Puan)", "Peripankreatik Sıvı (4 Puan)"]
@@ -356,10 +361,8 @@ elif st.session_state.kullanici_rolu == "Radyolog":
 
     sekme_rad1, sekme_rad2 = st.tabs(["📋 Puanlama Bekleyen Hastalar", "✏️ Puanlanmış Hastaları Düzenle"])
     
-    # SEKME 1: BEKLEYEN HASTALAR
     with sekme_rad1:
         st.subheader("Henüz Puanlanmamış Hastalar")
-        # Sadece CTSI skoru boş olanları filtrele
         mask_bekleyen = df["CTSI_Skoru"].isna() | (df["CTSI_Skoru"] == "")
         df_bekleyen = df[mask_bekleyen]
         
@@ -405,10 +408,8 @@ elif st.session_state.kullanici_rolu == "Radyolog":
                 veri_kaydet(df)
                 st.success(f"Başarılı! Bu hasta puanlama listesinden kaldırıldı. CTSI: {ctsi_p}, MCTSI: {mctsi_p}")
 
-    # SEKME 2: TAMAMLANAN HASTALARI DÜZENLE
     with sekme_rad2:
         st.subheader("Önceden Puanlanmış Hastaları Düzenle")
-        # Sadece CTSI skoru dolu olanları filtrele
         mask_tamam = df["CTSI_Skoru"].notna() & (df["CTSI_Skoru"] != "")
         df_tamam = df[mask_tamam]
         

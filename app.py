@@ -160,9 +160,19 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
             else:
                 st.error("Lütfen TC (11 hane) ve Ad Soyad alanlarını doldurun.")
 
-    with sekme2:
+   
+        with sekme2:
         st.subheader("Laboratuvar Sonuçlarını İşle")
-        hasta_secim = st.selectbox("Lab İçin Hasta Seçin", df["TC_No"] + " - " + df["Ad_Soyad"] if not df.empty else ["Hasta Yok"], key="lab_secim")
+        
+        arama_lab = st.text_input("🔍 İsim veya TC'nin bir kısmını yazarak arayın:", key="ara_lab")
+        if arama_lab:
+            mask_lab = df["TC_No"].str.contains(arama_lab, case=False, na=False) | df["Ad_Soyad"].str.contains(arama_lab, case=False, na=False)
+            filtreli_df_lab = df[mask_lab]
+        else:
+            filtreli_df_lab = df
+            
+        hasta_listesi_lab = filtreli_df_lab["TC_No"] + " - " + filtreli_df_lab["Ad_Soyad"] if not filtreli_df_lab.empty else ["Hasta Yok"]
+        hasta_secim = st.selectbox("Lab İçin Hasta Seçin", hasta_listesi_lab, key="lab_secim")
         
         if not df.empty and hasta_secim != "Hasta Yok":
             secilen_tc = hasta_secim.split(" - ")[0]
@@ -216,9 +226,18 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
                 veri_kaydet(df)
                 st.success(f"Lab verileri Google'a eklendi! SIRS: {sirs}, BISAP: {bisap}")
 
-    with sekme3:
+   with sekme3:
         st.subheader("Hastane Yatışı ve Sonlanım Bilgileri")
-        hasta_secim_son = st.selectbox("Sonlanım İçin Hasta Seçin", df["TC_No"] + " - " + df["Ad_Soyad"] if not df.empty else ["Hasta Yok"], key="son_secim")
+        
+        arama_son = st.text_input("🔍 İsim veya TC'nin bir kısmını yazarak arayın:", key="ara_son")
+        if arama_son:
+            mask_son = df["TC_No"].str.contains(arama_son, case=False, na=False) | df["Ad_Soyad"].str.contains(arama_son, case=False, na=False)
+            filtreli_df_son = df[mask_son]
+        else:
+            filtreli_df_son = df
+            
+        hasta_listesi_son = filtreli_df_son["TC_No"] + " - " + filtreli_df_son["Ad_Soyad"] if not filtreli_df_son.empty else ["Hasta Yok"]
+        hasta_secim_son = st.selectbox("Sonlanım İçin Hasta Seçin", hasta_listesi_son, key="son_secim")
         
         if not df.empty and hasta_secim_son != "Hasta Yok":
             secilen_tc_son = hasta_secim_son.split(" - ")[0]
@@ -263,9 +282,17 @@ elif st.session_state.kullanici_rolu == "Radyolog":
         
     df = veri_yukle()
     
-    st.subheader("Radyoloji Puanlaması Bekleyen Hastalar")
-    hasta_secim = st.selectbox("İncelenecek Hastayı Seçin", df["TC_No"] + " - " + df["Ad_Soyad"] if not df.empty else ["Hasta Yok"])
+   st.subheader("Radyoloji Puanlaması Bekleyen Hastalar")
     
+    arama_rad = st.text_input("🔍 İsim veya TC'nin bir kısmını yazarak arayın:", key="ara_rad")
+    if arama_rad:
+        mask_rad = df["TC_No"].str.contains(arama_rad, case=False, na=False) | df["Ad_Soyad"].str.contains(arama_rad, case=False, na=False)
+        filtreli_df_rad = df[mask_rad]
+    else:
+        filtreli_df_rad = df
+        
+    hasta_listesi_rad = filtreli_df_rad["TC_No"] + " - " + filtreli_df_rad["Ad_Soyad"] if not filtreli_df_rad.empty else ["Hasta Yok"]
+    hasta_secim = st.selectbox("İncelenecek Hastayı Seçin", hasta_listesi_rad, key="rad_secim")
     if not df.empty and hasta_secim != "Hasta Yok":
         st.write("Lütfen aşağıdaki bulguları işaretleyin. Puanlar otomatik hesaplanacaktır.")
         

@@ -10,9 +10,10 @@ st.set_page_config(page_title="Akut Pankreatit Çalışması", layout="wide")
 
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1fTA-MdaaV5CU812aPn1bZZc1KIMWey-P84jAqIbBYOA/edit?gid=0#gid=0"
 
-# Kayit_Tarihi sütunu eklendi
+# İşlem yapan kişileri takip etmek için 4 yeni sütun eklendi
 COLS = [
-    "TC_No", "Ad_Soyad", "Kayit_Tarihi", "Yas", "Cinsiyet", "Etiyoloji", "Semptom_Suresi", "GKS", 
+    "TC_No", "Ad_Soyad", "Kayit_Tarihi", "Kayit_Yapan", "Lab_Yapan", "Yatis_Yapan", "Radyoloji_Yapan",
+    "Yas", "Cinsiyet", "Etiyoloji", "Semptom_Suresi", "GKS", 
     "Ates", "Nabiz", "Solunum", "Sistolik", "Diyastolik", "SpO2", "Plevral_Efuzyon", 
     "BUN", "WBC", "Amilaz", "Lipaz", "Glukoz", "Kreatinin", "Na", "K", "AST", "ALT", 
     "Bilirubin", "Albumin", "Htc", "Hgb", "Plt", "Laktat", "pH", "PaCO2", "PaO2", "HCO3", 
@@ -39,7 +40,7 @@ def veri_yukle():
     headers = data.pop(0)
     df = pd.DataFrame(data, columns=headers)
     
-    # Eski tablolarda olmayan yeni sütunlar varsa (Kayıt Tarihi gibi) otomatik ekle
+    # Eski tablolarda olmayan yeni sütunlar varsa otomatik ekle (Bozulmayı önler)
     for col in COLS:
         if col not in df.columns:
             df[col] = ""
@@ -102,33 +103,37 @@ def bisap_hesapla(bun, gks, sirs, yas, plevral):
 # --- GİRİŞ PANELİ (LOGIN) ---
 if "kullanici_rolu" not in st.session_state:
     st.session_state.kullanici_rolu = None
+    st.session_state.aktif_kullanici = None
 
 if st.session_state.kullanici_rolu is None:
     st.title("🏥 Akut Pankreatit Çalışması Portalı")
     st.write("Lütfen giriş yapınız.")
     
-    kullanici_adi = st.text_input("Kullanıcı Adı")
+    kullanici_adi = st.text_input("Kullanıcı Adı").strip().lower()
     sifre = st.text_input("Şifre", type="password")
     
     if st.button("Giriş Yap"):
-        if kullanici_adi == "Acil" and sifre == "0322":
+        # Yeni Ekip Üyeleri Eklendi
+        if kullanici_adi in ["acil", "gulsima", "emir", "oyku"] and sifre == "0322":
             st.session_state.kullanici_rolu = "Acil Hekimi"
+            st.session_state.aktif_kullanici = kullanici_adi.capitalize()
             st.rerun()
-        elif kullanici_adi == "Radyolog" and sifre == "1230":
+        elif kullanici_adi == "radyolog" and sifre == "1230":
             st.session_state.kullanici_rolu = "Radyolog"
+            st.session_state.aktif_kullanici = "Radyolog"
             st.rerun()
         else:
             st.error("Hatalı kullanıcı adı veya şifre!")
 
 # --- ACİL HEKİMİ EKRANI ---
 elif st.session_state.kullanici_rolu == "Acil Hekimi":
-    st.title("👨‍⚕️ Acil Hekimi Paneli")
+    st.title(f"👨‍⚕️ Acil Paneli - Hoş Geldin {st.session_state.aktif_kullanici}")
     if st.button("Çıkış Yap"):
         st.session_state.kullanici_rolu = None
+        st.session_state.aktif_kullanici = None
         st.rerun()
         
-    # Yeni bir sekme (Hasta Listesi ve Durum) eklendi
-    sekme1, sekme2, sekme3, sekme4 = st.tabs(["📋 Yeni Hasta Kaydı", "🔬 Laboratuvar Girişi", "🏥 Yatış ve Sonlanım", "📊 Hasta Listesi ve Durum"])
+    sekme1, sekme2, sekme3, sekme4 = st.tabs(["📋 Yeni Hasta Kaydı", "🔬 Laboratuvar Girişi", "🏥 Yatış ve Sonlanım", "📊 Hasta Listesi ve Düzenleme"])
     
     df = veri_yukle()
     
@@ -162,20 +167,21 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
                 bugun = datetime.now().strftime("%d/%m/%Y")
                 yeni_veri = {col: "" for col in COLS}
                 yeni_veri.update({
-                    "TC_No": str(tc), "Ad_Soyad": ad, "Kayit_Tarihi": bugun, "Yas": yas, "Cinsiyet": cinsiyet, "Etiyoloji": etiyoloji,
+                    "TC_No": str(tc), "Ad_Soyad": ad, "Kayit_Tarihi": bugun, 
+                    "Kayit_Yapan": st.session_state.aktif_kullanici, # Kaydeden Kişi İşleniyor
+                    "Yas": yas, "Cinsiyet": cinsiyet, "Etiyoloji": etiyoloji,
                     "Semptom_Suresi": semptom, "GKS": gks, "Ates": ates, "Nabiz": nabiz, "Solunum": solunum,
                     "Sistolik": sistolik, "Diyastolik": diyastolik, "SpO2": spo2, "Plevral_Efuzyon": plevral
                 })
                 df = pd.concat([df, pd.DataFrame([yeni_veri])], ignore_index=True)
                 veri_kaydet(df)
-                st.success(f"Hasta başarıyla kaydedildi! (Kayıt Tarihi: {bugun})")
+                st.success(f"Hasta başarıyla kaydedildi! (Kaydeden: {st.session_state.aktif_kullanici})")
             else:
                 st.error("Lütfen TC (11 hane) ve Ad Soyad alanlarını doldurun.")
 
     # SEKME 2: LABORATUVAR
     with sekme2:
         st.subheader("Laboratuvar Sonuçlarını İşle")
-        
         arama_lab = st.text_input("🔍 İsim veya TC'nin bir kısmını yazarak arayın:", key="ara_lab")
         if arama_lab:
             mask_lab = df["TC_No"].str.contains(arama_lab, case=False, na=False) | df["Ad_Soyad"].str.contains(arama_lab, case=False, na=False)
@@ -221,13 +227,14 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
             pao2 = kg_col1.number_input("PaO2", value=get_val(df, idx, "PaO2"))
             hco3 = kg_col2.number_input("HCO3", value=get_val(df, idx, "HCO3"))
             
-            if st.button("Lab Sonuçlarını Kaydet ve Skorları Hesapla"):
+            if st.button("Lab Sonuçlarını Kaydet"):
                 df.at[idx, "BUN"] = bun; df.at[idx, "WBC"] = wbc; df.at[idx, "Amilaz"] = amilaz
                 df.at[idx, "Lipaz"] = lipaz; df.at[idx, "Glukoz"] = glukoz; df.at[idx, "Kreatinin"] = kreatinin
                 df.at[idx, "Na"] = na; df.at[idx, "K"] = k; df.at[idx, "AST"] = ast; df.at[idx, "ALT"] = alt
                 df.at[idx, "Bilirubin"] = bilirubin; df.at[idx, "Albumin"] = albumin; df.at[idx, "Htc"] = htc
                 df.at[idx, "Hgb"] = hgb; df.at[idx, "Plt"] = plt; df.at[idx, "Laktat"] = laktat
                 df.at[idx, "pH"] = ph; df.at[idx, "PaCO2"] = paco2; df.at[idx, "PaO2"] = pao2; df.at[idx, "HCO3"] = hco3
+                df.at[idx, "Lab_Yapan"] = st.session_state.aktif_kullanici # Labı giren kişi
                 
                 h = df.loc[idx]
                 sirs = sirs_hesapla(h["Ates"], h["Nabiz"], h["Solunum"], wbc)
@@ -236,12 +243,11 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
                 df.at[idx, "SIRS_Skoru"] = sirs
                 df.at[idx, "BISAP_Skoru"] = bisap
                 veri_kaydet(df)
-                st.success(f"Lab verileri Google'a eklendi! SIRS: {sirs}, BISAP: {bisap}")
+                st.success(f"Veriler Google'a eklendi! İşlemi Yapan: {st.session_state.aktif_kullanici}")
 
     # SEKME 3: YATIŞ
     with sekme3:
         st.subheader("Hastane Yatışı ve Sonlanım Bilgileri")
-        
         arama_son = st.text_input("🔍 İsim veya TC'nin bir kısmını yazarak arayın:", key="ara_son")
         if arama_son:
             mask_son = df["TC_No"].str.contains(arama_son, case=False, na=False) | df["Ad_Soyad"].str.contains(arama_son, case=False, na=False)
@@ -283,16 +289,16 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
                 df.at[idx_son, "Lokal_Komp"] = lokal_komp
                 df.at[idx_son, "Mudahale"] = mudahale
                 df.at[idx_son, "Mortalite"] = mortalite
+                df.at[idx_son, "Yatis_Yapan"] = st.session_state.aktif_kullanici # Yatışı giren kişi
                 veri_kaydet(df)
                 st.success("Sonlanım bilgileri Google'a kaydedildi!")
 
-    # SEKME 4: HASTA LİSTESİ VE EKSİK DURUM TAKİBİ
+    # SEKME 4: HASTA LİSTESİ VE DÜZENLEME
     with sekme4:
         st.subheader("📌 Hasta Listesi ve Eksik Veri Takibi")
         if df.empty:
             st.info("Henüz sisteme kayıtlı hasta bulunmuyor.")
         else:
-            # Güzel görünümlü bir tablo başlığı
             c1, c2, c3, c4, c5 = st.columns([3, 2, 1.5, 1.5, 1.5])
             c1.markdown("**Hasta Adı (TC)**")
             c2.markdown("**Kayıt Tarihi**")
@@ -301,41 +307,53 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
             c5.markdown("**☢️ Radyoloji**")
             st.divider()
             
-            # Hastaları döngüye al ve eksiklik durumlarını analiz et
             for idx, row in df.iterrows():
                 tc = str(row.get("TC_No", "Bilinmiyor"))
                 ad = str(row.get("Ad_Soyad", "Bilinmiyor"))
                 tarih = str(row.get("Kayit_Tarihi", "Tarih Yok"))
                 if tarih == "nan" or tarih.strip() == "": tarih = "Tarih Yok"
 
-                # Doluluk Kuralları: (Lab için BUN, Yatış için Atlanta, Radyoloji için CTSI_Skoru'na bakılır)
                 lab_ok = str(row.get("BUN", "")).strip() not in ["", "nan"]
                 yatis_ok = str(row.get("Atlanta", "")).strip() not in ["", "Belirtilmedi", "nan"]
                 rad_ok = str(row.get("CTSI_Skoru", "")).strip() not in ["", "nan"]
 
-                lab_ikon = "🟢 Tamam" if lab_ok else "🔴 Eksik"
-                yatis_ikon = "🟢 Tamam" if yatis_ok else "🔴 Eksik"
-                rad_ikon = "🟢 Tamam" if rad_ok else "🔴 Eksik"
-
                 c1, c2, c3, c4, c5 = st.columns([3, 2, 1.5, 1.5, 1.5])
                 c1.write(f"**{ad}**\n\n*(TC: {tc})*")
                 c2.write(tarih)
-                c3.write(lab_ikon)
-                c4.write(yatis_ikon)
-                c5.write(rad_ikon)
+                c3.write("🟢 Tamam" if lab_ok else "🔴 Eksik")
+                c4.write("🟢 Tamam" if yatis_ok else "🔴 Eksik")
+                c5.write("🟢 Tamam" if rad_ok else "🔴 Eksik")
                 st.divider()
+
+            # --- DİREKT HÜCRE DÜZENLEME ALANI (EXCEL MODU) ---
+            st.write("---")
+            st.subheader("✏️ Tüm Verileri Düzenle (Hızlı Excel Modu)")
+            st.info("💡 **Nasıl Kullanılır?** Aşağıdaki tabloda herhangi bir hücrenin üzerine çift tıklayarak veriyi doğrudan silebilir veya değiştirebilirsiniz. İşiniz bittiğinde alttaki mavi kaydet butonuna basmayı unutmayın.")
+            
+            # Etkileşimli tabloyu göster
+            edited_df = st.data_editor(df, key="veri_editoru", use_container_width=True, hide_index=True)
+
+            if st.button("💾 Tablodaki Değişiklikleri Google'a Kaydet"):
+                # Hesaplamaları güvenlik amacıyla yeniden yap
+                for i, row in edited_df.iterrows():
+                    sirs = sirs_hesapla(row["Ates"], row["Nabiz"], row["Solunum"], row["WBC"])
+                    edited_df.at[i, "SIRS_Skoru"] = sirs
+                    edited_df.at[i, "BISAP_Skoru"] = bisap_hesapla(row["BUN"], row["GKS"], sirs, row["Yas"], row["Plevral_Efuzyon"])
+                
+                veri_kaydet(edited_df)
+                st.success("Tüm düzenlemeler başarıyla güncellendi!")
 
 # --- RADYOLOG EKRANI ---
 elif st.session_state.kullanici_rolu == "Radyolog":
     st.title("☢️ Radyoloji Paneli")
     if st.button("Çıkış Yap"):
         st.session_state.kullanici_rolu = None
+        st.session_state.aktif_kullanici = None
         st.rerun()
         
     df = veri_yukle()
     
     st.subheader("Radyoloji Puanlaması Bekleyen Hastalar")
-    
     arama_rad = st.text_input("🔍 İsim veya TC'nin bir kısmını yazarak arayın:", key="ara_rad")
     if arama_rad:
         mask_rad = df["TC_No"].str.contains(arama_rad, case=False, na=False) | df["Ad_Soyad"].str.contains(arama_rad, case=False, na=False)
@@ -350,7 +368,6 @@ elif st.session_state.kullanici_rolu == "Radyolog":
         secilen_tc = hasta_secim.split(" - ")[0]
         hasta_idx = df[df["TC_No"] == secilen_tc].index[0]
         
-        # Radyolog Ekranında Kayıt Tarihini Gösterme
         kayit_tarihi = str(df.at[hasta_idx, "Kayit_Tarihi"]) if "Kayit_Tarihi" in df.columns else "Tarih Yok"
         if kayit_tarihi == "nan" or kayit_tarihi.strip() == "": kayit_tarihi = "Tarih Yok"
         st.info(f"📅 **Hastanın Sisteme Kayıt Tarihi:** {kayit_tarihi}")
@@ -375,6 +392,7 @@ elif st.session_state.kullanici_rolu == "Radyolog":
             
             df.at[hasta_idx, "CTSI_Skoru"] = ctsi_puan
             df.at[hasta_idx, "MCTSI_Skoru"] = mctsi_puan
+            df.at[hasta_idx, "Radyoloji_Yapan"] = st.session_state.aktif_kullanici # Puanlamayı yapan kişi
             veri_kaydet(df)
             
             st.success(f"Başarılı! CTSI Toplam: {ctsi_puan}, MCTSI Toplam: {mctsi_puan} (Google'a İşlendi)")

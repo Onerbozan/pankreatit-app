@@ -10,7 +10,7 @@ st.set_page_config(page_title="Akut Pankreatit Çalışması", layout="wide")
 
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1fTA-MdaaV5CU812aPn1bZZc1KIMWey-P84jAqIbBYOA/edit?gid=0#gid=0"
 
-# İşlem yapan kişileri takip etmek için 4 yeni sütun eklendi
+# Radyoloji alt parametreleri için 5 yeni sütun eklendi
 COLS = [
     "TC_No", "Ad_Soyad", "Kayit_Tarihi", "Kayit_Yapan", "Lab_Yapan", "Yatis_Yapan", "Radyoloji_Yapan",
     "Yas", "Cinsiyet", "Etiyoloji", "Semptom_Suresi", "GKS", 
@@ -18,7 +18,8 @@ COLS = [
     "BUN", "WBC", "Amilaz", "Lipaz", "Glukoz", "Kreatinin", "Na", "K", "AST", "ALT", 
     "Bilirubin", "Albumin", "Htc", "Hgb", "Plt", "Laktat", "pH", "PaCO2", "PaO2", "HCO3", 
     "Atlanta", "Yatis_Karari", "Yatis_Yeri", "YBU_Sure", "Toplam_Sure", "Lokal_Komp", 
-    "Mudahale", "Mortalite", "SIRS_Skoru", "BISAP_Skoru", "CTSI_Skoru", "MCTSI_Skoru"
+    "Mudahale", "Mortalite", "SIRS_Skoru", "BISAP_Skoru", "CTSI_Skoru", "MCTSI_Skoru",
+    "Rad_Balthazar", "Rad_Nekroz_CTSI", "Rad_Inflamasyon", "Rad_Nekroz_MCTSI", "Rad_Ekstra_Komp"
 ]
 
 @st.cache_resource
@@ -40,7 +41,7 @@ def veri_yukle():
     headers = data.pop(0)
     df = pd.DataFrame(data, columns=headers)
     
-    # Eski tablolarda olmayan yeni sütunlar varsa otomatik ekle (Bozulmayı önler)
+    # Eski tablolarda olmayan yeni sütunlar varsa otomatik ekle
     for col in COLS:
         if col not in df.columns:
             df[col] = ""
@@ -113,7 +114,6 @@ if st.session_state.kullanici_rolu is None:
     sifre = st.text_input("Şifre", type="password")
     
     if st.button("Giriş Yap"):
-        # Yeni Ekip Üyeleri Eklendi
         if kullanici_adi in ["acil", "gulsima", "emir", "oyku"] and sifre == "0322":
             st.session_state.kullanici_rolu = "Acil Hekimi"
             st.session_state.aktif_kullanici = kullanici_adi.capitalize()
@@ -168,7 +168,7 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
                 yeni_veri = {col: "" for col in COLS}
                 yeni_veri.update({
                     "TC_No": str(tc), "Ad_Soyad": ad, "Kayit_Tarihi": bugun, 
-                    "Kayit_Yapan": st.session_state.aktif_kullanici, # Kaydeden Kişi İşleniyor
+                    "Kayit_Yapan": st.session_state.aktif_kullanici,
                     "Yas": yas, "Cinsiyet": cinsiyet, "Etiyoloji": etiyoloji,
                     "Semptom_Suresi": semptom, "GKS": gks, "Ates": ates, "Nabiz": nabiz, "Solunum": solunum,
                     "Sistolik": sistolik, "Diyastolik": diyastolik, "SpO2": spo2, "Plevral_Efuzyon": plevral
@@ -196,12 +196,10 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
             secilen_tc = hasta_secim.split(" - ")[0]
             idx = df[df["TC_No"] == secilen_tc].index[0]
             
-            st.markdown("**Skorlama İçin Kritik Parametreler**")
             col1, col2 = st.columns(2)
             bun = col1.number_input("BUN (mg/dL)", value=get_val(df, idx, "BUN"))
             wbc = col2.number_input("WBC (Lökosit) /mm³", value=get_val(df, idx, "WBC"))
             
-            st.markdown("**Biyokimya ve Hemogram**")
             l_col1, l_col2, l_col3, l_col4 = st.columns(4)
             amilaz = l_col1.number_input("Amilaz (U/mL)", value=get_val(df, idx, "Amilaz"))
             lipaz = l_col2.number_input("Lipaz (U/mL)", value=get_val(df, idx, "Lipaz"))
@@ -218,7 +216,6 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
             htc = l_col3.number_input("Hematokrit (%)", value=get_val(df, idx, "Htc"))
             hgb = l_col4.number_input("Hemoglobin", value=get_val(df, idx, "Hgb"))
             
-            st.markdown("**Kan Gazı ve Diğerleri**")
             kg_col1, kg_col2, kg_col3, kg_col4 = st.columns(4)
             plt = kg_col1.number_input("Trombosit", value=get_val(df, idx, "Plt"))
             laktat = kg_col2.number_input("Laktat", value=get_val(df, idx, "Laktat"))
@@ -234,7 +231,7 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
                 df.at[idx, "Bilirubin"] = bilirubin; df.at[idx, "Albumin"] = albumin; df.at[idx, "Htc"] = htc
                 df.at[idx, "Hgb"] = hgb; df.at[idx, "Plt"] = plt; df.at[idx, "Laktat"] = laktat
                 df.at[idx, "pH"] = ph; df.at[idx, "PaCO2"] = paco2; df.at[idx, "PaO2"] = pao2; df.at[idx, "HCO3"] = hco3
-                df.at[idx, "Lab_Yapan"] = st.session_state.aktif_kullanici # Labı giren kişi
+                df.at[idx, "Lab_Yapan"] = st.session_state.aktif_kullanici
                 
                 h = df.loc[idx]
                 sirs = sirs_hesapla(h["Ates"], h["Nabiz"], h["Solunum"], wbc)
@@ -262,12 +259,10 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
             secilen_tc_son = hasta_secim_son.split(" - ")[0]
             idx_son = df[df["TC_No"] == secilen_tc_son].index[0]
             
-            st.markdown("**Revize Atlanta Sınıflaması**")
             atlanta_opts = ["Belirtilmedi", "Hafif (Organ yetmezliği yok)", "Orta Şiddette (<48 saat yetmezlik)", "Ağır (Kalıcı yetmezlik >=48 saat)"]
             mevcut_atlanta = df.at[idx_son, "Atlanta"] if pd.notna(df.at[idx_son, "Atlanta"]) and df.at[idx_son, "Atlanta"] != "" else "Belirtilmedi"
             atlanta = st.selectbox("Şiddet", atlanta_opts, index=atlanta_opts.index(mevcut_atlanta) if mevcut_atlanta in atlanta_opts else 0)
             
-            st.markdown("**Yatış Bilgileri**")
             s_col1, s_col2 = st.columns(2)
             yatis_karari = s_col1.radio("Yatış Kararı", ["Belirtilmedi", "Yatış", "Taburcu"])
             yatis_yeri = s_col2.selectbox("Yatış Yeri", ["Belirtilmedi", "Servis", "Yoğun Bakım"])
@@ -275,7 +270,6 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
             ybu_sure = s_col1.number_input("YBÜ Kalış Süresi (Gün)", min_value=0, value=int(get_val(df, idx_son, "YBU_Sure")))
             toplam_sure = s_col2.number_input("Toplam Hastane Kalış Süresi (Gün)", min_value=0, value=int(get_val(df, idx_son, "Toplam_Sure")))
             
-            st.markdown("**Komplikasyon ve Sonlanım**")
             lokal_komp = st.selectbox("Lokal Komplikasyonlar", ["Yok", "Nekroz", "Apse", "Psödokist", "Ekstrapankreatik Koleksiyon"])
             mudahale = st.radio("Cerrahi/Girişimsel Müdahale", ["Hayır", "Evet"])
             mortalite = st.radio("Hastanede Kalış Süresi Sonlanım", ["Belirtilmedi", "Taburcu", "In-Hospital Mortalite"])
@@ -289,7 +283,7 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
                 df.at[idx_son, "Lokal_Komp"] = lokal_komp
                 df.at[idx_son, "Mudahale"] = mudahale
                 df.at[idx_son, "Mortalite"] = mortalite
-                df.at[idx_son, "Yatis_Yapan"] = st.session_state.aktif_kullanici # Yatışı giren kişi
+                df.at[idx_son, "Yatis_Yapan"] = st.session_state.aktif_kullanici
                 veri_kaydet(df)
                 st.success("Sonlanım bilgileri Google'a kaydedildi!")
 
@@ -325,16 +319,13 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
                 c5.write("🟢 Tamam" if rad_ok else "🔴 Eksik")
                 st.divider()
 
-            # --- DİREKT HÜCRE DÜZENLEME ALANI (EXCEL MODU) ---
             st.write("---")
             st.subheader("✏️ Tüm Verileri Düzenle (Hızlı Excel Modu)")
             st.info("💡 **Nasıl Kullanılır?** Aşağıdaki tabloda herhangi bir hücrenin üzerine çift tıklayarak veriyi doğrudan silebilir veya değiştirebilirsiniz. İşiniz bittiğinde alttaki mavi kaydet butonuna basmayı unutmayın.")
             
-            # Etkileşimli tabloyu göster
             edited_df = st.data_editor(df, key="veri_editoru", use_container_width=True, hide_index=True)
 
             if st.button("💾 Tablodaki Değişiklikleri Google'a Kaydet"):
-                # Hesaplamaları güvenlik amacıyla yeniden yap
                 for i, row in edited_df.iterrows():
                     sirs = sirs_hesapla(row["Ates"], row["Nabiz"], row["Solunum"], row["WBC"])
                     edited_df.at[i, "SIRS_Skoru"] = sirs
@@ -345,7 +336,7 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
 
 # --- RADYOLOG EKRANI ---
 elif st.session_state.kullanici_rolu == "Radyolog":
-    st.title("☢️ Radyoloji Paneli")
+    st.title(f"☢️ Radyoloji Paneli - Hoş Geldin {st.session_state.aktif_kullanici}")
     if st.button("Çıkış Yap"):
         st.session_state.kullanici_rolu = None
         st.session_state.aktif_kullanici = None
@@ -353,46 +344,113 @@ elif st.session_state.kullanici_rolu == "Radyolog":
         
     df = veri_yukle()
     
-    st.subheader("Radyoloji Puanlaması Bekleyen Hastalar")
-    arama_rad = st.text_input("🔍 İsim veya TC'nin bir kısmını yazarak arayın:", key="ara_rad")
-    if arama_rad:
-        mask_rad = df["TC_No"].str.contains(arama_rad, case=False, na=False) | df["Ad_Soyad"].str.contains(arama_rad, case=False, na=False)
-        filtreli_df_rad = df[mask_rad]
-    else:
-        filtreli_df_rad = df
-        
-    hasta_listesi_rad = filtreli_df_rad["TC_No"] + " - " + filtreli_df_rad["Ad_Soyad"] if not filtreli_df_rad.empty else ["Hasta Yok"]
-    hasta_secim = st.selectbox("İncelenecek Hastayı Seçin", hasta_listesi_rad, key="rad_secim_kutu")
+    # Radyoloji Seçenekleri
+    opt_balthazar = ["Grade A (0 Puan)", "Grade B (1 Puan)", "Grade C (2 Puan)", "Grade D (3 Puan)", "Grade E (4 Puan)"]
+    opt_nekroz_c = ["Yok (0 Puan)", "<%33 (2 Puan)", "%33-%50 (4 Puan)", ">%50 (6 Puan)"]
+    opt_inf = ["Normal (0 Puan)", "Fokal/Diffüz Genişleme (2 Puan)", "Peripankreatik Sıvı (4 Puan)"]
+    opt_nekroz_m = ["Yok (0 Puan)", "<%30 (2 Puan)", ">%30 (4 Puan)"]
+    opt_komp = ["Yok (0 Puan)", "Var (2 Puan)"]
+
+    def safe_idx(opts, val):
+        return opts.index(val) if pd.notna(val) and val in opts else 0
+
+    sekme_rad1, sekme_rad2 = st.tabs(["📋 Puanlama Bekleyen Hastalar", "✏️ Puanlanmış Hastaları Düzenle"])
     
-    if not filtreli_df_rad.empty and hasta_secim != "Hasta Yok":
-        secilen_tc = hasta_secim.split(" - ")[0]
-        hasta_idx = df[df["TC_No"] == secilen_tc].index[0]
+    # SEKME 1: BEKLEYEN HASTALAR
+    with sekme_rad1:
+        st.subheader("Henüz Puanlanmamış Hastalar")
+        # Sadece CTSI skoru boş olanları filtrele
+        mask_bekleyen = df["CTSI_Skoru"].isna() | (df["CTSI_Skoru"] == "")
+        df_bekleyen = df[mask_bekleyen]
         
-        kayit_tarihi = str(df.at[hasta_idx, "Kayit_Tarihi"]) if "Kayit_Tarihi" in df.columns else "Tarih Yok"
-        if kayit_tarihi == "nan" or kayit_tarihi.strip() == "": kayit_tarihi = "Tarih Yok"
-        st.info(f"📅 **Hastanın Sisteme Kayıt Tarihi:** {kayit_tarihi}")
-        
-        st.write("Lütfen aşağıdaki bulguları işaretleyin. Puanlar otomatik hesaplanacaktır.")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("**CTSI (Balthazar) Değerlendirmesi**")
-            balthazar = st.selectbox("Pankreas Morfolojisi", ["Grade A (0 Puan)", "Grade B (1 Puan)", "Grade C (2 Puan)", "Grade D (3 Puan)", "Grade E (4 Puan)"])
-            nekroz_ctsi = st.selectbox("Nekroz Yüzdesi", ["Yok (0 Puan)", "<%33 (2 Puan)", "%33-%50 (4 Puan)", ">%50 (6 Puan)"])
-        
-        with col2:
-            st.markdown("**MCTSI (Modifiye) Değerlendirmesi**")
-            inflamasyon = st.selectbox("İnflamasyon", ["Normal (0 Puan)", "Fokal/Diffüz Genişleme (2 Puan)", "Peripankreatik Sıvı (4 Puan)"])
-            nekroz_mctsi = st.selectbox("MCTSI Nekroz", ["Yok (0 Puan)", "<%30 (2 Puan)", ">%30 (4 Puan)"])
-            komplikasyon = st.radio("Ekstrapankreatik Komplikasyon", ["Yok (0 Puan)", "Var (2 Puan)"])
+        arama_rad1 = st.text_input("🔍 İsim veya TC arayın:", key="ara_rad_1")
+        if arama_rad1:
+            m1 = df_bekleyen["TC_No"].str.contains(arama_rad1, case=False, na=False) | df_bekleyen["Ad_Soyad"].str.contains(arama_rad1, case=False, na=False)
+            df_bekleyen = df_bekleyen[m1]
             
-        if st.button("Radyoloji Skorlarını Kaydet"):
-            ctsi_puan = int(balthazar.split("(")[1][0]) + int(nekroz_ctsi.split("(")[1][0])
-            mctsi_puan = int(inflamasyon.split("(")[1][0]) + int(nekroz_mctsi.split("(")[1][0]) + int(komplikasyon.split("(")[1][0])
+        liste_rad1 = df_bekleyen["TC_No"] + " - " + df_bekleyen["Ad_Soyad"] if not df_bekleyen.empty else ["Bekleyen Hasta Yok"]
+        secim_rad1 = st.selectbox("İncelenecek Hastayı Seçin", liste_rad1, key="rad_secim_1")
+        
+        if not df_bekleyen.empty and secim_rad1 != "Bekleyen Hasta Yok":
+            secilen_tc1 = secim_rad1.split(" - ")[0]
+            idx1 = df[df["TC_No"] == secilen_tc1].index[0]
             
-            df.at[hasta_idx, "CTSI_Skoru"] = ctsi_puan
-            df.at[hasta_idx, "MCTSI_Skoru"] = mctsi_puan
-            df.at[hasta_idx, "Radyoloji_Yapan"] = st.session_state.aktif_kullanici # Puanlamayı yapan kişi
-            veri_kaydet(df)
+            kayit_tarihi1 = str(df.at[idx1, "Kayit_Tarihi"]) if "Kayit_Tarihi" in df.columns else "Tarih Yok"
+            if kayit_tarihi1 == "nan" or kayit_tarihi1.strip() == "": kayit_tarihi1 = "Tarih Yok"
+            st.info(f"📅 **Hastanın Sisteme Kayıt Tarihi:** {kayit_tarihi1}")
             
-            st.success(f"Başarılı! CTSI Toplam: {ctsi_puan}, MCTSI Toplam: {mctsi_puan} (Google'a İşlendi)")
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("**CTSI (Balthazar) Değerlendirmesi**")
+                balt1 = st.selectbox("Pankreas Morfolojisi", opt_balthazar, key="b1")
+                nek_c1 = st.selectbox("Nekroz Yüzdesi", opt_nekroz_c, key="nc1")
+            with c2:
+                st.markdown("**MCTSI (Modifiye) Değerlendirmesi**")
+                inf1 = st.selectbox("İnflamasyon", opt_inf, key="i1")
+                nek_m1 = st.selectbox("MCTSI Nekroz", opt_nekroz_m, key="nm1")
+                komp1 = st.radio("Ekstrapankreatik Komplikasyon", opt_komp, key="k1")
+                
+            if st.button("Puanları Kaydet", key="btn1"):
+                ctsi_p = int(balt1.split("(")[1][0]) + int(nek_c1.split("(")[1][0])
+                mctsi_p = int(inf1.split("(")[1][0]) + int(nek_m1.split("(")[1][0]) + int(komp1.split("(")[1][0])
+                
+                df.at[idx1, "CTSI_Skoru"] = ctsi_p
+                df.at[idx1, "MCTSI_Skoru"] = mctsi_p
+                df.at[idx1, "Rad_Balthazar"] = balt1
+                df.at[idx1, "Rad_Nekroz_CTSI"] = nek_c1
+                df.at[idx1, "Rad_Inflamasyon"] = inf1
+                df.at[idx1, "Rad_Nekroz_MCTSI"] = nek_m1
+                df.at[idx1, "Rad_Ekstra_Komp"] = komp1
+                df.at[idx1, "Radyoloji_Yapan"] = st.session_state.aktif_kullanici
+                veri_kaydet(df)
+                st.success(f"Başarılı! Bu hasta puanlama listesinden kaldırıldı. CTSI: {ctsi_p}, MCTSI: {mctsi_p}")
+
+    # SEKME 2: TAMAMLANAN HASTALARI DÜZENLE
+    with sekme_rad2:
+        st.subheader("Önceden Puanlanmış Hastaları Düzenle")
+        # Sadece CTSI skoru dolu olanları filtrele
+        mask_tamam = df["CTSI_Skoru"].notna() & (df["CTSI_Skoru"] != "")
+        df_tamam = df[mask_tamam]
+        
+        arama_rad2 = st.text_input("🔍 İsim veya TC arayın:", key="ara_rad_2")
+        if arama_rad2:
+            m2 = df_tamam["TC_No"].str.contains(arama_rad2, case=False, na=False) | df_tamam["Ad_Soyad"].str.contains(arama_rad2, case=False, na=False)
+            df_tamam = df_tamam[m2]
+            
+        liste_rad2 = df_tamam["TC_No"] + " - " + df_tamam["Ad_Soyad"] if not df_tamam.empty else ["Düzenlenecek Hasta Yok"]
+        secim_rad2 = st.selectbox("Düzenlenecek Hastayı Seçin", liste_rad2, key="rad_secim_2")
+        
+        if not df_tamam.empty and secim_rad2 != "Düzenlenecek Hasta Yok":
+            secilen_tc2 = secim_rad2.split(" - ")[0]
+            idx2 = df[df["TC_No"] == secilen_tc2].index[0]
+            
+            eski_ctsi = df.at[idx2, "CTSI_Skoru"]
+            eski_mctsi = df.at[idx2, "MCTSI_Skoru"]
+            eski_yapan = df.at[idx2, "Radyoloji_Yapan"]
+            st.warning(f"⚠️ Bu hasta daha önce puanlanmıştır. Eski Skorlar -> CTSI: {eski_ctsi} | MCTSI: {eski_mctsi} (İşlem Yapan: {eski_yapan})")
+            
+            c3, c4 = st.columns(2)
+            with c3:
+                st.markdown("**CTSI (Balthazar) Değerlendirmesi**")
+                balt2 = st.selectbox("Pankreas Morfolojisi", opt_balthazar, index=safe_idx(opt_balthazar, df.at[idx2, "Rad_Balthazar"]), key="b2")
+                nek_c2 = st.selectbox("Nekroz Yüzdesi", opt_nekroz_c, index=safe_idx(opt_nekroz_c, df.at[idx2, "Rad_Nekroz_CTSI"]), key="nc2")
+            with c4:
+                st.markdown("**MCTSI (Modifiye) Değerlendirmesi**")
+                inf2 = st.selectbox("İnflamasyon", opt_inf, index=safe_idx(opt_inf, df.at[idx2, "Rad_Inflamasyon"]), key="i2")
+                nek_m2 = st.selectbox("MCTSI Nekroz", opt_nekroz_m, index=safe_idx(opt_nekroz_m, df.at[idx2, "Rad_Nekroz_MCTSI"]), key="nm2")
+                komp2 = st.radio("Ekstrapankreatik Komplikasyon", opt_komp, index=safe_idx(opt_komp, df.at[idx2, "Rad_Ekstra_Komp"]), key="k2")
+                
+            if st.button("Değişiklikleri Kaydet ve Güncelle", key="btn2"):
+                ctsi_p2 = int(balt2.split("(")[1][0]) + int(nek_c2.split("(")[1][0])
+                mctsi_p2 = int(inf2.split("(")[1][0]) + int(nek_m2.split("(")[1][0]) + int(komp2.split("(")[1][0])
+                
+                df.at[idx2, "CTSI_Skoru"] = ctsi_p2
+                df.at[idx2, "MCTSI_Skoru"] = mctsi_p2
+                df.at[idx2, "Rad_Balthazar"] = balt2
+                df.at[idx2, "Rad_Nekroz_CTSI"] = nek_c2
+                df.at[idx2, "Rad_Inflamasyon"] = inf2
+                df.at[idx2, "Rad_Nekroz_MCTSI"] = nek_m2
+                df.at[idx2, "Rad_Ekstra_Komp"] = komp2
+                df.at[idx2, "Radyoloji_Yapan"] = f"{st.session_state.aktif_kullanici} (Düzenledi)"
+                veri_kaydet(df)
+                st.success(f"Güncelleme Başarılı! Yeni Skorlar -> CTSI: {ctsi_p2}, MCTSI: {mctsi_p2}")

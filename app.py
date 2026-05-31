@@ -56,7 +56,7 @@ def veri_kaydet(df):
     veri_yukle.clear()
 
 def get_val(df, idx, col, default=0.0):
-    val = df.at[idx, col]
+    val = df.loc[idx, col] # .at yerine .loc kullanıldı
     if pd.isna(val) or str(val).strip() == "":
         return default
     try:
@@ -154,7 +154,6 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
         solunum = v3.number_input("Solunum Sayısı (/dk)", value=16)
         spo2 = v4.number_input("SpO2 (%)", value=98)
         
-        # Plevral Efüzyon buradan kaldırıldı, 3 sütuna düşürüldü
         v5, v6, v7 = st.columns(3)
         sistolik = v5.number_input("Sistolik KB", value=120)
         diyastolik = v6.number_input("Diyastolik KB", value=80)
@@ -169,7 +168,7 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
                     "Kayit_Yapan": st.session_state.aktif_kullanici,
                     "Yas": yas, "Cinsiyet": cinsiyet, "Etiyoloji": etiyoloji,
                     "Semptom_Suresi": semptom, "GKS": gks, "Ates": ates, "Nabiz": nabiz, "Solunum": solunum,
-                    "Sistolik": sistolik, "Diyastolik": diyastolik, "SpO2": spo2, "Plevral_Efuzyon": "Yok" # Standart boş değer
+                    "Sistolik": sistolik, "Diyastolik": diyastolik, "SpO2": spo2, "Plevral_Efuzyon": "Yok"
                 })
                 df = pd.concat([df, pd.DataFrame([yeni_veri])], ignore_index=True)
                 veri_kaydet(df)
@@ -199,8 +198,7 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
             bun = col1.number_input("BUN (mg/dL)", value=get_val(df, idx, "BUN"))
             wbc = col2.number_input("WBC (Lökosit) /mm³", value=get_val(df, idx, "WBC"))
             
-            # Plevral Efüzyon buraya eklendi
-            mevcut_plevral = str(df.at[idx, "Plevral_Efuzyon"]).strip()
+            mevcut_plevral = str(df.loc[idx, "Plevral_Efuzyon"]).strip()
             plevral_idx = 1 if mevcut_plevral == "Var" else 0
             plevral = col3.radio("Plevral Efüzyon", ["Yok", "Var"], index=plevral_idx)
             
@@ -231,21 +229,22 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
             hco3 = kg_col2.number_input("HCO3", value=get_val(df, idx, "HCO3"))
             
             if st.button("Lab Sonuçlarını Kaydet"):
-                df.at[idx, "BUN"] = bun; df.at[idx, "WBC"] = wbc; df.at[idx, "Amilaz"] = amilaz
-                df.at[idx, "Lipaz"] = lipaz; df.at[idx, "Glukoz"] = glukoz; df.at[idx, "Kreatinin"] = kreatinin
-                df.at[idx, "Na"] = na; df.at[idx, "K"] = k; df.at[idx, "AST"] = ast; df.at[idx, "ALT"] = alt
-                df.at[idx, "Bilirubin"] = bilirubin; df.at[idx, "Albumin"] = albumin; df.at[idx, "Htc"] = htc
-                df.at[idx, "Hgb"] = hgb; df.at[idx, "Plt"] = plt; df.at[idx, "Laktat"] = laktat
-                df.at[idx, "pH"] = ph; df.at[idx, "PaCO2"] = paco2; df.at[idx, "PaO2"] = pao2; df.at[idx, "HCO3"] = hco3
-                df.at[idx, "Plevral_Efuzyon"] = plevral
-                df.at[idx, "Lab_Yapan"] = st.session_state.aktif_kullanici
+                # DİKKAT: .at hatalarından kurtulmak için hepsi .loc yapıldı
+                df.loc[idx, "BUN"] = bun; df.loc[idx, "WBC"] = wbc; df.loc[idx, "Amilaz"] = amilaz
+                df.loc[idx, "Lipaz"] = lipaz; df.loc[idx, "Glukoz"] = glukoz; df.loc[idx, "Kreatinin"] = kreatinin
+                df.loc[idx, "Na"] = na; df.loc[idx, "K"] = k; df.loc[idx, "AST"] = ast; df.loc[idx, "ALT"] = alt
+                df.loc[idx, "Bilirubin"] = bilirubin; df.loc[idx, "Albumin"] = albumin; df.loc[idx, "Htc"] = htc
+                df.loc[idx, "Hgb"] = hgb; df.loc[idx, "Plt"] = plt; df.loc[idx, "Laktat"] = laktat
+                df.loc[idx, "pH"] = ph; df.loc[idx, "PaCO2"] = paco2; df.loc[idx, "PaO2"] = pao2; df.loc[idx, "HCO3"] = hco3
+                df.loc[idx, "Plevral_Efuzyon"] = plevral
+                df.loc[idx, "Lab_Yapan"] = st.session_state.aktif_kullanici
                 
-                h = df.loc[idx]
-                sirs = sirs_hesapla(h["Ates"], h["Nabiz"], h["Solunum"], wbc)
-                bisap = bisap_hesapla(bun, h["GKS"], sirs, h["Yas"], plevral)
+                h_row = df.loc[idx]
+                sirs = sirs_hesapla(h_row["Ates"], h_row["Nabiz"], h_row["Solunum"], wbc)
+                bisap = bisap_hesapla(bun, h_row["GKS"], sirs, h_row["Yas"], plevral)
                 
-                df.at[idx, "SIRS_Skoru"] = sirs
-                df.at[idx, "BISAP_Skoru"] = bisap
+                df.loc[idx, "SIRS_Skoru"] = sirs
+                df.loc[idx, "BISAP_Skoru"] = bisap
                 veri_kaydet(df)
                 st.success(f"Veriler Google'a eklendi! İşlemi Yapan: {st.session_state.aktif_kullanici}")
 
@@ -267,7 +266,7 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
             idx_son = df[df["TC_No"] == secilen_tc_son].index[0]
             
             atlanta_opts = ["Belirtilmedi", "Hafif (Organ yetmezliği yok)", "Orta Şiddette (<48 saat yetmezlik)", "Ağır (Kalıcı yetmezlik >=48 saat)"]
-            mevcut_atlanta = df.at[idx_son, "Atlanta"] if pd.notna(df.at[idx_son, "Atlanta"]) and df.at[idx_son, "Atlanta"] != "" else "Belirtilmedi"
+            mevcut_atlanta = df.loc[idx_son, "Atlanta"] if pd.notna(df.loc[idx_son, "Atlanta"]) and df.loc[idx_son, "Atlanta"] != "" else "Belirtilmedi"
             atlanta = st.selectbox("Şiddet", atlanta_opts, index=atlanta_opts.index(mevcut_atlanta) if mevcut_atlanta in atlanta_opts else 0)
             
             s_col1, s_col2 = st.columns(2)
@@ -282,15 +281,15 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
             mortalite = st.radio("Hastanede Kalış Süresi Sonlanım", ["Belirtilmedi", "Taburcu", "In-Hospital Mortalite"])
             
             if st.button("Sonlanım Verilerini Kaydet"):
-                df.at[idx_son, "Atlanta"] = atlanta
-                df.at[idx_son, "Yatis_Karari"] = yatis_karari
-                df.at[idx_son, "Yatis_Yeri"] = yatis_yeri
-                df.at[idx_son, "YBU_Sure"] = ybu_sure
-                df.at[idx_son, "Toplam_Sure"] = toplam_sure
-                df.at[idx_son, "Lokal_Komp"] = lokal_komp
-                df.at[idx_son, "Mudahale"] = mudahale
-                df.at[idx_son, "Mortalite"] = mortalite
-                df.at[idx_son, "Yatis_Yapan"] = st.session_state.aktif_kullanici
+                df.loc[idx_son, "Atlanta"] = atlanta
+                df.loc[idx_son, "Yatis_Karari"] = yatis_karari
+                df.loc[idx_son, "Yatis_Yeri"] = yatis_yeri
+                df.loc[idx_son, "YBU_Sure"] = ybu_sure
+                df.loc[idx_son, "Toplam_Sure"] = toplam_sure
+                df.loc[idx_son, "Lokal_Komp"] = lokal_komp
+                df.loc[idx_son, "Mudahale"] = mudahale
+                df.loc[idx_son, "Mortalite"] = mortalite
+                df.loc[idx_son, "Yatis_Yapan"] = st.session_state.aktif_kullanici
                 veri_kaydet(df)
                 st.success("Sonlanım bilgileri Google'a kaydedildi!")
 
@@ -304,8 +303,8 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
         if st.button("💾 Tablodaki Değişiklikleri Google'a Kaydet"):
             for i, row in edited_df.iterrows():
                 sirs = sirs_hesapla(row["Ates"], row["Nabiz"], row["Solunum"], row["WBC"])
-                edited_df.at[i, "SIRS_Skoru"] = sirs
-                edited_df.at[i, "BISAP_Skoru"] = bisap_hesapla(row["BUN"], row["GKS"], sirs, row["Yas"], row["Plevral_Efuzyon"])
+                edited_df.loc[i, "SIRS_Skoru"] = sirs
+                edited_df.loc[i, "BISAP_Skoru"] = bisap_hesapla(row["BUN"], row["GKS"], sirs, row["Yas"], row["Plevral_Efuzyon"])
             
             veri_kaydet(edited_df)
             st.success("Tüm düzenlemeler başarıyla güncellendi!")
@@ -316,7 +315,6 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
         if df.empty:
             st.info("Henüz sisteme kayıtlı hasta bulunmuyor.")
         else:
-            # Çok daha kompakt ve küçük bir mini tablo oluşturuluyor
             durum_listesi = []
             for idx, row in df.iterrows():
                 tc = str(row.get("TC_No", ""))
@@ -378,7 +376,7 @@ elif st.session_state.kullanici_rolu == "Radyolog":
             secilen_tc1 = secim_rad1.split(" - ")[0]
             idx1 = df[df["TC_No"] == secilen_tc1].index[0]
             
-            kayit_tarihi1 = str(df.at[idx1, "Kayit_Tarihi"]) if "Kayit_Tarihi" in df.columns else "Tarih Yok"
+            kayit_tarihi1 = str(df.loc[idx1, "Kayit_Tarihi"]) if "Kayit_Tarihi" in df.columns else "Tarih Yok"
             if kayit_tarihi1 == "nan" or kayit_tarihi1.strip() == "": kayit_tarihi1 = "Tarih Yok"
             st.info(f"📅 **Hastanın Sisteme Kayıt Tarihi:** {kayit_tarihi1}")
             
@@ -397,14 +395,14 @@ elif st.session_state.kullanici_rolu == "Radyolog":
                 ctsi_p = int(balt1.split("(")[1][0]) + int(nek_c1.split("(")[1][0])
                 mctsi_p = int(inf1.split("(")[1][0]) + int(nek_m1.split("(")[1][0]) + int(komp1.split("(")[1][0])
                 
-                df.at[idx1, "CTSI_Skoru"] = ctsi_p
-                df.at[idx1, "MCTSI_Skoru"] = mctsi_p
-                df.at[idx1, "Rad_Balthazar"] = balt1
-                df.at[idx1, "Rad_Nekroz_CTSI"] = nek_c1
-                df.at[idx1, "Rad_Inflamasyon"] = inf1
-                df.at[idx1, "Rad_Nekroz_MCTSI"] = nek_m1
-                df.at[idx1, "Rad_Ekstra_Komp"] = komp1
-                df.at[idx1, "Radyoloji_Yapan"] = st.session_state.aktif_kullanici
+                df.loc[idx1, "CTSI_Skoru"] = ctsi_p
+                df.loc[idx1, "MCTSI_Skoru"] = mctsi_p
+                df.loc[idx1, "Rad_Balthazar"] = balt1
+                df.loc[idx1, "Rad_Nekroz_CTSI"] = nek_c1
+                df.loc[idx1, "Rad_Inflamasyon"] = inf1
+                df.loc[idx1, "Rad_Nekroz_MCTSI"] = nek_m1
+                df.loc[idx1, "Rad_Ekstra_Komp"] = komp1
+                df.loc[idx1, "Radyoloji_Yapan"] = st.session_state.aktif_kullanici
                 veri_kaydet(df)
                 st.success(f"Başarılı! Bu hasta puanlama listesinden kaldırıldı. CTSI: {ctsi_p}, MCTSI: {mctsi_p}")
 
@@ -425,33 +423,33 @@ elif st.session_state.kullanici_rolu == "Radyolog":
             secilen_tc2 = secim_rad2.split(" - ")[0]
             idx2 = df[df["TC_No"] == secilen_tc2].index[0]
             
-            eski_ctsi = df.at[idx2, "CTSI_Skoru"]
-            eski_mctsi = df.at[idx2, "MCTSI_Skoru"]
-            eski_yapan = df.at[idx2, "Radyoloji_Yapan"]
+            eski_ctsi = df.loc[idx2, "CTSI_Skoru"]
+            eski_mctsi = df.loc[idx2, "MCTSI_Skoru"]
+            eski_yapan = df.loc[idx2, "Radyoloji_Yapan"]
             st.warning(f"⚠️ Bu hasta daha önce puanlanmıştır. Eski Skorlar -> CTSI: {eski_ctsi} | MCTSI: {eski_mctsi} (İşlem Yapan: {eski_yapan})")
             
             c3, c4 = st.columns(2)
             with c3:
                 st.markdown("**CTSI (Balthazar) Değerlendirmesi**")
-                balt2 = st.selectbox("Pankreas Morfolojisi", opt_balthazar, index=safe_idx(opt_balthazar, df.at[idx2, "Rad_Balthazar"]), key="b2")
-                nek_c2 = st.selectbox("Nekroz Yüzdesi", opt_nekroz_c, index=safe_idx(opt_nekroz_c, df.at[idx2, "Rad_Nekroz_CTSI"]), key="nc2")
+                balt2 = st.selectbox("Pankreas Morfolojisi", opt_balthazar, index=safe_idx(opt_balthazar, df.loc[idx2, "Rad_Balthazar"]), key="b2")
+                nek_c2 = st.selectbox("Nekroz Yüzdesi", opt_nekroz_c, index=safe_idx(opt_nekroz_c, df.loc[idx2, "Rad_Nekroz_CTSI"]), key="nc2")
             with c4:
                 st.markdown("**MCTSI (Modifiye) Değerlendirmesi**")
-                inf2 = st.selectbox("İnflamasyon", opt_inf, index=safe_idx(opt_inf, df.at[idx2, "Rad_Inflamasyon"]), key="i2")
-                nek_m2 = st.selectbox("MCTSI Nekroz", opt_nekroz_m, index=safe_idx(opt_nekroz_m, df.at[idx2, "Rad_Nekroz_MCTSI"]), key="nm2")
-                komp2 = st.radio("Ekstrapankreatik Komplikasyon", opt_komp, index=safe_idx(opt_komp, df.at[idx2, "Rad_Ekstra_Komp"]), key="k2")
+                inf2 = st.selectbox("İnflamasyon", opt_inf, index=safe_idx(opt_inf, df.loc[idx2, "Rad_Inflamasyon"]), key="i2")
+                nek_m2 = st.selectbox("MCTSI Nekroz", opt_nekroz_m, index=safe_idx(opt_nekroz_m, df.loc[idx2, "Rad_Nekroz_MCTSI"]), key="nm2")
+                komp2 = st.radio("Ekstrapankreatik Komplikasyon", opt_komp, index=safe_idx(opt_komp, df.loc[idx2, "Rad_Ekstra_Komp"]), key="k2")
                 
             if st.button("Değişiklikleri Kaydet ve Güncelle", key="btn2"):
                 ctsi_p2 = int(balt2.split("(")[1][0]) + int(nek_c2.split("(")[1][0])
                 mctsi_p2 = int(inf2.split("(")[1][0]) + int(nek_m2.split("(")[1][0]) + int(komp2.split("(")[1][0])
                 
-                df.at[idx2, "CTSI_Skoru"] = ctsi_p2
-                df.at[idx2, "MCTSI_Skoru"] = mctsi_p2
-                df.at[idx2, "Rad_Balthazar"] = balt2
-                df.at[idx2, "Rad_Nekroz_CTSI"] = nek_c2
-                df.at[idx2, "Rad_Inflamasyon"] = inf2
-                df.at[idx2, "Rad_Nekroz_MCTSI"] = nek_m2
-                df.at[idx2, "Rad_Ekstra_Komp"] = komp2
-                df.at[idx2, "Radyoloji_Yapan"] = f"{st.session_state.aktif_kullanici} (Düzenledi)"
+                df.loc[idx2, "CTSI_Skoru"] = ctsi_p2
+                df.loc[idx2, "MCTSI_Skoru"] = mctsi_p2
+                df.loc[idx2, "Rad_Balthazar"] = balt2
+                df.loc[idx2, "Rad_Nekroz_CTSI"] = nek_c2
+                df.loc[idx2, "Rad_Inflamasyon"] = inf2
+                df.loc[idx2, "Rad_Nekroz_MCTSI"] = nek_m2
+                df.loc[idx2, "Rad_Ekstra_Komp"] = komp2
+                df.loc[idx2, "Radyoloji_Yapan"] = f"{st.session_state.aktif_kullanici} (Düzenledi)"
                 veri_kaydet(df)
                 st.success(f"Güncelleme Başarılı! Yeni Skorlar -> CTSI: {ctsi_p2}, MCTSI: {mctsi_p2}")

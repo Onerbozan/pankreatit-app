@@ -35,7 +35,7 @@ def veri_yukle():
     data = sheet.get_all_values()
     if not data:
         sheet.update(values=[COLS], range_name='A1')
-        return pd.DataFrame(columns=COLS)
+        return pd.DataFrame(columns=COLS).astype(object)
     
     headers = data.pop(0)
     df = pd.DataFrame(data, columns=headers)
@@ -43,6 +43,8 @@ def veri_yukle():
     for col in COLS:
         if col not in df.columns:
             df[col] = ""
+            
+    df = df.astype(object)
             
     if 'TC_No' in df.columns:
         df['TC_No'] = df['TC_No'].astype(str)
@@ -56,7 +58,7 @@ def veri_kaydet(df):
     veri_yukle.clear()
 
 def get_val(df, idx, col, default=0.0):
-    val = df.loc[idx, col] # .at yerine .loc kullanıldı
+    val = df.loc[idx, col]
     if pd.isna(val) or str(val).strip() == "":
         return default
     try:
@@ -99,10 +101,20 @@ def bisap_hesapla(bun, gks, sirs, yas, plevral):
         pass
     return skor
 
-# --- GİRİŞ PANELİ (LOGIN) ---
+# --- GİRİŞ PANELİ VE BENİ HATIRLA SİSTEMİ ---
 if "kullanici_rolu" not in st.session_state:
     st.session_state.kullanici_rolu = None
     st.session_state.aktif_kullanici = None
+
+# URL'den Mühür (Oturum) Kontrolü
+if "oturum" in st.query_params and st.session_state.kullanici_rolu is None:
+    kayitli_kullanici = st.query_params["oturum"]
+    if kayitli_kullanici in ["acil", "gulsima", "emir", "oyku"]:
+        st.session_state.kullanici_rolu = "Acil Hekimi"
+        st.session_state.aktif_kullanici = kayitli_kullanici.capitalize()
+    elif kayitli_kullanici == "radyolog":
+        st.session_state.kullanici_rolu = "Radyolog"
+        st.session_state.aktif_kullanici = "Radyolog"
 
 if st.session_state.kullanici_rolu is None:
     st.title("🏥 Akut Pankreatit Çalışması Portalı")
@@ -115,10 +127,14 @@ if st.session_state.kullanici_rolu is None:
         if kullanici_adi in ["acil", "gulsima", "emir", "oyku"] and sifre == "0322":
             st.session_state.kullanici_rolu = "Acil Hekimi"
             st.session_state.aktif_kullanici = kullanici_adi.capitalize()
+            # Başarılı girişte adresi mühürle
+            st.query_params["oturum"] = kullanici_adi
             st.rerun()
         elif kullanici_adi == "radyolog" and sifre == "1230":
             st.session_state.kullanici_rolu = "Radyolog"
             st.session_state.aktif_kullanici = "Radyolog"
+            # Başarılı girişte adresi mühürle
+            st.query_params["oturum"] = kullanici_adi
             st.rerun()
         else:
             st.error("Hatalı kullanıcı adı veya şifre!")
@@ -126,9 +142,12 @@ if st.session_state.kullanici_rolu is None:
 # --- ACİL HEKİMİ EKRANI ---
 elif st.session_state.kullanici_rolu == "Acil Hekimi":
     st.title(f"👨‍⚕️ Acil Paneli - Hoş Geldin {st.session_state.aktif_kullanici}")
-    if st.button("Çıkış Yap"):
+    
+    if st.button("🚪 Çıkış Yap"):
         st.session_state.kullanici_rolu = None
         st.session_state.aktif_kullanici = None
+        if "oturum" in st.query_params:
+            del st.query_params["oturum"] # Çıkışta mührü sil
         st.rerun()
         
     sekme1, sekme2, sekme3, sekme4 = st.tabs(["📋 Yeni Hasta Kaydı", "🔬 Laboratuvar Girişi", "🏥 Yatış ve Sonlanım", "📊 Hasta Listesi ve Düzenleme"])
@@ -229,7 +248,6 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
             hco3 = kg_col2.number_input("HCO3", value=get_val(df, idx, "HCO3"))
             
             if st.button("Lab Sonuçlarını Kaydet"):
-                # DİKKAT: .at hatalarından kurtulmak için hepsi .loc yapıldı
                 df.loc[idx, "BUN"] = bun; df.loc[idx, "WBC"] = wbc; df.loc[idx, "Amilaz"] = amilaz
                 df.loc[idx, "Lipaz"] = lipaz; df.loc[idx, "Glukoz"] = glukoz; df.loc[idx, "Kreatinin"] = kreatinin
                 df.loc[idx, "Na"] = na; df.loc[idx, "K"] = k; df.loc[idx, "AST"] = ast; df.loc[idx, "ALT"] = alt
@@ -341,9 +359,12 @@ elif st.session_state.kullanici_rolu == "Acil Hekimi":
 # --- RADYOLOG EKRANI ---
 elif st.session_state.kullanici_rolu == "Radyolog":
     st.title(f"☢️ Radyoloji Paneli - Hoş Geldin {st.session_state.aktif_kullanici}")
-    if st.button("Çıkış Yap"):
+    
+    if st.button("🚪 Çıkış Yap"):
         st.session_state.kullanici_rolu = None
         st.session_state.aktif_kullanici = None
+        if "oturum" in st.query_params:
+            del st.query_params["oturum"] # Çıkışta mührü sil
         st.rerun()
         
     df = veri_yukle()

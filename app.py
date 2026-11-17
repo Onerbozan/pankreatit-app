@@ -109,7 +109,7 @@ if "kullanici_rolu" not in st.session_state:
 # URL'den Mühür (Oturum) Kontrolü
 if "oturum" in st.query_params and st.session_state.kullanici_rolu is None:
     kayitli_kullanici = st.query_params["oturum"]
-    if kayitli_kullanici in ["acil", "gulsima", "emir", "oyku"]:
+    if kayitli_kullanici in ["acil", "gulsima", "emir", "yaseko", "kanuni", "kanuni2"]:
         st.session_state.kullanici_rolu = "Acil Hekimi"
         st.session_state.aktif_kullanici = kayitli_kullanici.capitalize()
     elif kayitli_kullanici == "radyolog":
@@ -124,7 +124,7 @@ if st.session_state.kullanici_rolu is None:
     sifre = st.text_input("Şifre", type="password")
     
     if st.button("Giriş Yap"):
-        if kullanici_adi in ["acil", "gulsima", "emir", "oyku"] and sifre == "0322":
+        if kullanici_adi in ["acil", "gulsima", "emir", "yaseko", "kanuni", "kanuni2"] and sifre == "0322":
             st.session_state.kullanici_rolu = "Acil Hekimi"
             st.session_state.aktif_kullanici = kullanici_adi.capitalize()
             # Başarılı girişte adresi mühürle
